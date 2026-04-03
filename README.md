@@ -93,14 +93,6 @@ Open [http://localhost:3000](http://localhost:3000) (or the port shown in the te
 
 ---
 
-## 中文说明
-
-**AI 投资备忘录（DD Agent）**：上传商业材料（可按类型分类），用 AI 预填尽调问卷，并并发生成多章节投资备忘录，支持中英文与常见 OpenAI 兼容 API。
-
-截图位于 `docs/screenshots/`，可自行替换为真实运行截图以便对外展示。
-
----
-
 ## License
 
 This project is provided as-is for demonstration and internal tooling. Add a `LICENSE` file if you open-source it under a specific terms.
