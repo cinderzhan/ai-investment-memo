@@ -1,0 +1,14 @@
+# Dev env — only frontend publishes a host port.
+# Host 3013 -> container 3000
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: invest-yutong-investmentmemo:latest
+    container_name: invest-yutong-dev-1
+    ports:
+      - "3013:3000"
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
