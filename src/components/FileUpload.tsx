@@ -61,20 +61,30 @@ export default function FileUpload({ files, onFilesChange, language, category, l
 
     onFilesChange((prev) => [...prev, ...placeholders]);
 
-    for (const ph of placeholders) {
-      const rawFile = rawFilesRef.current.get(ph.id);
-      if (!rawFile) continue;
-      try {
-        const content = await parseFile(rawFile);
-        onFilesChange((prev) =>
-          prev.map((f) => f.id === ph.id ? { ...f, content, parseStatus: 'success' as const } : f)
-        );
-      } catch {
-        onFilesChange((prev) =>
-          prev.map((f) => f.id === ph.id ? { ...f, parseStatus: 'failed' as const } : f)
-        );
+    const results = await Promise.all(
+      placeholders.map(async (ph) => {
+        const rawFile = rawFilesRef.current.get(ph.id);
+        if (!rawFile) return { id: ph.id, ok: false as const, content: '' };
+        try {
+          const content = await parseFile(rawFile);
+          return { id: ph.id, ok: true as const, content };
+        } catch {
+          return { id: ph.id, ok: false as const, content: '' };
+        }
+      }),
+    );
+
+    onFilesChange((prev) => {
+      let next = prev;
+      for (const r of results) {
+        next = next.map((f) => {
+          if (f.id !== r.id) return f;
+          if (r.ok) return { ...f, content: r.content, parseStatus: 'success' as const };
+          return { ...f, parseStatus: 'failed' as const };
+        });
       }
-    }
+      return next;
+    });
   }, [onFilesChange, category]);
 
   const handleRetry = useCallback(async (fileId: string) => {

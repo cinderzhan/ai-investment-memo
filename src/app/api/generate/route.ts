@@ -15,27 +15,28 @@ function sanitizeHeaderValue(value: string): string {
 export async function POST(request: NextRequest) {
   try {
     const { provider, model, apiKey, baseUrl, messages } = await request.json();
+    console.log(`[generate] provider=${provider} model=${model} baseUrl=${baseUrl || '(default)'} messages=${messages?.length || 0}`);
 
     if (!apiKey) {
+      console.log('[generate] ERROR: no API key');
       return new Response('API key is required', { status: 400 });
     }
 
     const safeApiKey = sanitizeHeaderValue(apiKey);
 
-    // Anthropic uses a different API format (only for preset Anthropic provider)
     if (provider === 'anthropic' && !baseUrl) {
       return handleAnthropic(model, safeApiKey, messages);
     }
 
-    // All others use OpenAI-compatible format
     let url: string;
     if (baseUrl) {
-      // Custom or overridden base URL — append /chat/completions
       const cleanUrl = baseUrl.replace(/\/+$/, '');
       url = cleanUrl.endsWith('/chat/completions') ? cleanUrl : `${cleanUrl}/chat/completions`;
     } else {
       url = PROVIDER_URLS[provider] || 'https://api.openai.com/v1/chat/completions';
     }
+
+    console.log(`[generate] -> ${url}`);
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -49,14 +50,17 @@ export async function POST(request: NextRequest) {
     };
 
     const encoder = new TextEncoder();
+    const startMs = Date.now();
     const res = await fetch(url, {
       method: 'POST',
       headers,
       body: encoder.encode(JSON.stringify(body)),
     });
+    console.log(`[generate] <- ${res.status} (${Date.now() - startMs}ms)`);
 
     if (!res.ok) {
       const errText = await res.text();
+      console.log(`[generate] ERROR: ${errText.slice(0, 300)}`);
       const encoder = new TextEncoder();
       return new Response(encoder.encode(`Provider error: ${errText}`), {
         status: res.status,

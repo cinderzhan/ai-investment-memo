@@ -11,7 +11,7 @@ import FileUpload from '@/components/FileUpload';
 
 export default function CreatePage() {
   const router = useRouter();
-  const { createProject, addUploadedFile, loadFromStorage } = useProjectStore();
+  const { createProject, addUploadedFiles, loadFromStorage } = useProjectStore();
   const { language, defaultModel, providers, customModels, setDefaultModel, loadFromStorage: loadSettings, getAvailableModels } = useSettingsStore();
   const isZh = language === 'zh';
 
@@ -46,7 +46,7 @@ export default function CreatePage() {
   const handleCreate = () => {
     if (!canCreate) return;
     const projectId = createProject(companyName.trim(), industry || 'other', lang);
-    files.forEach((f) => addUploadedFile(projectId, f));
+    if (files.length > 0) addUploadedFiles(projectId, files);
     router.push(`/editor/${projectId}`);
   };
 

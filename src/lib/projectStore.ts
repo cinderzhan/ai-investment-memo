@@ -32,6 +32,8 @@ interface ProjectStore {
   getCurrentProject: () => Project | null;
   updateProjectStage: (id: string, stage: ProjectStage) => void;
   addUploadedFile: (projectId: string, file: UploadedFile) => void;
+  /** Append many files in one update (single localStorage write — faster than repeated addUploadedFile). */
+  addUploadedFiles: (projectId: string, files: UploadedFile[]) => void;
   deleteProject: (id: string) => void;
   completeProject: (id: string) => void;
   
@@ -104,6 +106,18 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       projects: state.projects.map((p) =>
         p.id === projectId
           ? { ...p, uploadedFiles: [...p.uploadedFiles, file], updatedAt: Date.now() }
+          : p
+      ),
+    }));
+    get().saveToStorage();
+  },
+
+  addUploadedFiles: (projectId, files) => {
+    if (files.length === 0) return;
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === projectId
+          ? { ...p, uploadedFiles: [...p.uploadedFiles, ...files], updatedAt: Date.now() }
           : p
       ),
     }));
