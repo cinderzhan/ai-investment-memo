@@ -1327,18 +1327,13 @@ textarea.input {
 .settings-overlay {
   position: fixed;
   inset: 0;
+  /* Solid backdrop — do NOT animate opacity on this layer: opacity:0 still captures clicks. */
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(4px);
   z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn var(--duration-normal);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 .settings-modal {
@@ -1542,7 +1537,10 @@ textarea.input {
   padding: 4px;
   display: flex;
   gap: 2px;
-  z-index: 120;
+  width: max-content;
+  max-width: min(480px, calc(100vw - 24px));
+  flex-wrap: wrap;
+  z-index: 130;
   animation: toolbarIn var(--duration-fast) var(--ease);
   box-shadow: var(--shadow-lg);
 }
@@ -1821,20 +1819,58 @@ textarea.input {
   overflow: hidden;
 }
 
+.questionnaire-section-header-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--bg-subtle);
+  position: relative;
+}
+
+.questionnaire-section-header-wrap:hover .questionnaire-section-retry {
+  opacity: 1;
+}
+
 .questionnaire-section-header {
-  width: 100%;
-  padding: 16px 20px;
+  flex: 1;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--bg-subtle);
+  background: none;
   border: none;
   cursor: pointer;
   text-align: left;
 }
 
-.questionnaire-section-header:hover {
+.questionnaire-section-header-wrap:hover {
   background: var(--bg-hover);
+}
+
+.questionnaire-section-retry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  margin-right: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg-subtle);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.12s, border-color 0.12s;
+}
+
+.questionnaire-section-retry:hover {
+  color: var(--fg);
+  border-color: var(--fg-subtle);
+}
+
+.questionnaire-section-retry:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .questionnaire-section-header-left {
@@ -2209,10 +2245,6 @@ textarea.input {
   cursor: not-allowed;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 .spin {
   animation: spin 1s linear infinite;
 }

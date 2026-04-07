@@ -347,6 +347,112 @@ export default function EditorPage() {
     }
   }, [project?.stage, project?.uploadedFiles.length, preFillQuestionnaire]);
 
+  // Retry pre-fill for a single questionnaire section
+  const handleSectionPreFillRetry = useCallback(async (sectionType: MemoSectionType) => {
+    if (!project || !project.questionnaire) return;
+
+    const creds = getModelCredentials();
+    if (!creds.apiKey) {
+      addChatMessage({
+        projectId,
+        role: 'assistant',
+        content: isZh ? '请先在设置中配置 API Key。' : 'Please configure an API Key in Settings first.',
+      });
+      return;
+    }
+
+    let extractedInfo = project.uploadedFiles
+      .map((f) => f.content || '')
+      .filter(Boolean)
+      .join('\n\n---\n\n');
+    if (extractedInfo.length > 120000) {
+      extractedInfo = extractedInfo.slice(0, 120000) + '\n\n[...truncated...]';
+    }
+    if (!extractedInfo.trim()) return;
+
+    const sq = project.questionnaire.find((q) => q.sectionType === sectionType);
+    if (!sq) return;
+
+    const sectionTitleMap = Object.fromEntries(
+      MEMO_SECTIONS.map((s) => [s.type, { en: s.title, zh: s.titleZh }])
+    );
+    const sectionTitle = isZh
+      ? sectionTitleMap[sectionType]?.zh
+      : sectionTitleMap[sectionType]?.en;
+
+    setPreFillingSections((prev) => new Set(prev).add(sectionType));
+
+    const parseJsonAnswers = (text: string): Record<string, string> => {
+      try {
+        const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+        const candidate = codeBlockMatch ? codeBlockMatch[1].trim() : text.trim();
+        const jsonMatch = candidate.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const result: Record<string, string> = {};
+          for (const [key, value] of Object.entries(parsed)) {
+            if (typeof value === 'string' && value.trim() && value.toLowerCase() !== 'n/a') {
+              result[key] = value;
+            }
+          }
+          return result;
+        }
+      } catch { /* ignore */ }
+      return {};
+    };
+
+    try {
+      const prompt = getSectionPreFillPrompt(
+        language,
+        extractedInfo,
+        sectionTitle || sectionType,
+        sq.questions.map((q) => ({ id: q.id, question: q.question, questionZh: q.questionZh })),
+      );
+      const response = await callLLM(creds, prompt);
+      const answers = parseJsonAnswers(response);
+      const filledCount = Object.keys(answers).length;
+
+      if (filledCount > 0) {
+        bulkUpdateQuestionnaire(projectId, answers);
+        const qaPairs = sq.questions
+          .filter((q) => answers[q.id])
+          .map((q) => `Q: ${isZh ? q.questionZh : q.question}\nA: ${answers[q.id]}`)
+          .join('\n\n');
+        addChatMessage({
+          projectId,
+          role: 'assistant',
+          content: `🔄 ${sectionTitle} (${filledCount}/${sq.questions.length})\n\n${qaPairs}`,
+        });
+      } else {
+        addChatMessage({
+          projectId,
+          role: 'assistant',
+          content: isZh
+            ? `ℹ️ ${sectionTitle}: 文档中未找到相关信息`
+            : `ℹ️ ${sectionTitle}: No relevant info found in documents`,
+        });
+      }
+    } catch (err) {
+      const isTimeout = err instanceof DOMException && err.name === 'AbortError';
+      const errMsg = isTimeout
+        ? (isZh ? '请求超时' : 'Request timeout')
+        : (err instanceof Error ? err.message.slice(0, 200) : 'Unknown error');
+      addChatMessage({
+        projectId,
+        role: 'assistant',
+        content: isZh
+          ? `⚠️ ${sectionTitle} 重试失败: ${errMsg}`
+          : `⚠️ ${sectionTitle} retry failed: ${errMsg}`,
+      });
+    } finally {
+      setPreFillingSections((prev) => {
+        const next = new Set(prev);
+        next.delete(sectionType);
+        return next;
+      });
+    }
+  }, [project, projectId, language, isZh, getModelCredentials, addChatMessage, bulkUpdateQuestionnaire, callLLM]);
+
   // ============ STEP 2: Generate all sections in parallel ============
   const generateAllSections = useCallback(async () => {
     if (!project || !project.questionnaire) return;
@@ -685,6 +791,7 @@ export default function EditorPage() {
                 onAnswerChange={handleQuestionAnswerChange}
                 isPreFilling={isPreFilling}
                 preFillingSections={preFillingSections}
+                onSectionRetry={handleSectionPreFillRetry}
               />
             </div>
 

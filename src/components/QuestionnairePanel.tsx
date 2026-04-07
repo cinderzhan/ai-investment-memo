@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { SectionQuestionnaire, Language, MemoSectionType } from '@/lib/types';
 import { MEMO_SECTIONS } from '@/lib/constants';
-import { IconChevronDown, IconSparkles, IconLoader } from './Icons';
+import { IconChevronDown, IconSparkles, IconLoader, IconRefresh } from './Icons';
 
 interface QuestionnairePanelProps {
   questionnaire: SectionQuestionnaire[];
@@ -11,6 +11,7 @@ interface QuestionnairePanelProps {
   onAnswerChange: (sectionType: MemoSectionType, questionId: string, answer: string) => void;
   isPreFilling?: boolean;
   preFillingSections?: Set<MemoSectionType>;
+  onSectionRetry?: (sectionType: MemoSectionType) => void;
 }
 
 export default function QuestionnairePanel({
@@ -19,6 +20,7 @@ export default function QuestionnairePanel({
   onAnswerChange,
   isPreFilling,
   preFillingSections,
+  onSectionRetry,
 }: QuestionnairePanelProps) {
   const isZh = language === 'zh';
   const [expandedSections, setExpandedSections] = useState<Set<MemoSectionType>>(
@@ -79,28 +81,40 @@ export default function QuestionnairePanel({
           const isSectionPreFilling = preFillingSections?.has(sq.sectionType) ?? false;
 
           return (
-            <div key={sq.sectionType} className="questionnaire-section">
-              <button
-                className="questionnaire-section-header"
-                onClick={() => toggleSection(sq.sectionType)}
-              >
-                <div className="questionnaire-section-header-left">
-                  <span className={`questionnaire-chevron ${isExpanded ? 'open' : ''}`}>
-                    <IconChevronDown size={14} />
+            <div key={sq.sectionType} className="questionnaire-section" id={`section-${sq.sectionType}`}>
+              <div className="questionnaire-section-header-wrap">
+                <button
+                  className="questionnaire-section-header"
+                  onClick={() => toggleSection(sq.sectionType)}
+                >
+                  <div className="questionnaire-section-header-left">
+                    <span className={`questionnaire-chevron ${isExpanded ? 'open' : ''}`}>
+                      <IconChevronDown size={14} />
+                    </span>
+                    <span className="questionnaire-section-title">
+                      {isZh ? sectionDef.titleZh : sectionDef.title}
+                    </span>
+                    {isSectionPreFilling && (
+                      <IconLoader size={13} className="spin" />
+                    )}
+                  </div>
+                  <span className="questionnaire-section-count">
+                    {isSectionPreFilling
+                      ? (isZh ? '解析中...' : 'Parsing...')
+                      : `${sectionFilled}/${sq.questions.length}`}
                   </span>
-                  <span className="questionnaire-section-title">
-                    {isZh ? sectionDef.titleZh : sectionDef.title}
-                  </span>
-                  {isSectionPreFilling && (
-                    <IconLoader size={14} />
-                  )}
-                </div>
-                <span className="questionnaire-section-count">
-                  {isSectionPreFilling
-                    ? (isZh ? '解析中...' : 'Parsing...')
-                    : `${sectionFilled}/${sq.questions.length}`}
-                </span>
-              </button>
+                </button>
+                {onSectionRetry && !isSectionPreFilling && (
+                  <button
+                    className="questionnaire-section-retry"
+                    onClick={(e) => { e.stopPropagation(); onSectionRetry(sq.sectionType); }}
+                    title={isZh ? '重新解析此章节' : 'Re-analyze this section'}
+                    disabled={isPreFilling}
+                  >
+                    <IconRefresh size={13} />
+                  </button>
+                )}
+              </div>
 
               {isExpanded && (
                 <div className="questionnaire-questions">

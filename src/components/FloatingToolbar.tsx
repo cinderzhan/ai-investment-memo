@@ -11,7 +11,13 @@ interface FloatingToolbarProps {
 }
 
 export default function FloatingToolbar({ position, language, onAction, onClose }: FloatingToolbarProps) {
-  if (!position) return null;
+  if (
+    !position ||
+    !Number.isFinite(position.top) ||
+    !Number.isFinite(position.left)
+  ) {
+    return null;
+  }
   const isZh = language === 'zh';
 
   const actions = [
@@ -24,7 +30,11 @@ export default function FloatingToolbar({ position, language, onAction, onClose 
   return (
     <div
       className="floating-toolbar"
-      style={{ top: position.top - 48, left: position.left }}
+      style={{
+        top: position.top - 48,
+        left: position.left,
+        transform: 'translateX(-50%)',
+      }}
       onMouseDown={(e) => e.preventDefault()}
       onMouseLeave={onClose}
     >

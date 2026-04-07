@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSettingsStore } from '@/lib/settingsStore';
 import { IconSettings, IconChevronDown, IconLibrary } from './Icons';
@@ -40,17 +40,22 @@ export default function Header({ projectName, showModelSelector = false }: Heade
     return found?.name || defaultModel.model;
   })();
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setShowSettings(false);
+      setShowDropdown(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   return (
     <>
       <header className="app-header">
         <div className="app-header-left">
           <div className="app-logo" onClick={() => router.push('/')}>
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="24" height="24" rx="6" fill="currentColor" />
-              <path d="M7 7h4.5a3.5 3.5 0 0 1 0 7H7V7z" stroke="white" strokeWidth="1.5" fill="none" />
-              <path d="M7 14h5a3.5 3.5 0 0 1 0 7H7v-7z" stroke="white" strokeWidth="1.5" fill="none" />
-            </svg>
-            DD Agent
+            Investment Assistant
           </div>
           {projectName && (
             <div className="breadcrumb">
